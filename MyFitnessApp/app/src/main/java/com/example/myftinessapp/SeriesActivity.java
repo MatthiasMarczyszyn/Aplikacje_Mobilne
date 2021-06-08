@@ -13,19 +13,17 @@ import java.util.Locale;
 public class SeriesActivity extends MainActivity implements View.OnClickListener {
     private long startInMiliis = 0;
     private long timeLeft = startInMiliis;
-    private CountDownTimer countDownTimer;
     private boolean startStop = true;
     private boolean onPause = false;
     private boolean restExercise = false;
     private boolean stopGyroa = false;
-    private Accelerometer accelerometer;
     private Gyroscope gyroscope;
     private int exerciseType;
     private int exerciseAmount = 0;
     private int exerciseLeft = exerciseAmount;
     private int seriesAmount = 0;
     private int seriesLeft = seriesAmount;
-    private Handler handler;
+    private Handler handler = new Handler();
     TextView infoText;
     TextView timeRepeatsText;
     TextView exerciseText;
@@ -40,6 +38,87 @@ public class SeriesActivity extends MainActivity implements View.OnClickListener
     Button startStopButtonS;
     Button backButtonS;
 
+    public Runnable runnable = new Runnable() {
+        @Override
+        public void run()
+        {
+            if (!startStop && seriesLeft>0 && !onPause) {
+                if (!restExercise) {
+                    timeRepeatsText.post(new Runnable() {
+                        public void run() {
+                            timeRepeatsText.setText(String.format(Locale.getDefault(), "%01d", exerciseLeft));
+                        }
+                    });
+                    if (exerciseType == 0) {
+                        infoText.post(new Runnable() {
+                            public void run() {
+                                infoText.setText("Now Squats!");
+                            }
+                        });
+                    } else {
+                        infoText.post(new Runnable() {
+                            public void run() {
+                                infoText.setText("Now Push Ups!");
+                            }
+                        });
+                    }
+                    if (exerciseLeft == 0) {
+                        restExercise = true;
+                        exerciseLeft = exerciseAmount;
+                        timeLeft = startInMiliis;
+                    }
+                }
+                if (restExercise) {
+                    timeLeft -= 50;
+                    infoText.post(new Runnable() {
+                        public void run() {
+                            infoText.setText("Now Rest!");
+                        }
+                    });
+
+
+                    timeRepeatsText.post(new Runnable() {
+                        public void run() {
+                            timeRepeatsText.setText(String.format(Locale.getDefault(), "%01d", timeLeft / 1000));
+                        }
+                    });
+
+                    if (timeLeft == 0) {
+                        restExercise = false;
+                        seriesLeft--;
+                    }
+                }
+            }
+            if (seriesLeft == 0){
+                startStop = true;
+                onPause = false;
+                exerciseLeft = exerciseAmount;
+                timeLeft = startInMiliis;
+                seriesLeft = seriesAmount;
+                infoText.post(new Runnable(){
+                    public void run() {
+                        infoText.setText("Set up Your Traning!");
+                    }
+                });
+                timeRepeatsText.post(new Runnable(){
+                    public void run() {
+                        timeRepeatsText.setText("0");                        }
+                });
+
+                startStopButtonS.post(new Runnable(){
+                    public void run() {
+                        startStopButtonS.setText("Start");
+                    }
+                });
+
+               }
+
+
+            handler.postDelayed(runnable, 50);
+        }
+
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,6 +131,9 @@ public class SeriesActivity extends MainActivity implements View.OnClickListener
         timerText = (TextView) findViewById(R.id.timerText);
         seriesText = (TextView) findViewById(R.id.seriesText);
         exerciseType = getIntent().getExtras().getInt("type");
+
+
+        handler.post(runnable);
 
         addRepeatButton = (Button) findViewById(R.id.addRepeatButton);
         addRepeatButton.setOnClickListener(new View.OnClickListener() {
@@ -131,20 +213,6 @@ public class SeriesActivity extends MainActivity implements View.OnClickListener
             }
         });
 
-        startStopButtonS = (Button) findViewById(R.id.startStopButtonS);
-        startStopButtonS.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (startStop) {
-                    startStop = false;
-                    startStopButtonS.setText("Stop");
-                } else {
-                    startStop = true;
-                    startStopButtonS.setText("Start");
-                }
-            }
-        });
-
         gyroscope = new Gyroscope(this);
         gyroscope.setListener(new Gyroscope.Listener() {
             @Override
@@ -157,11 +225,11 @@ public class SeriesActivity extends MainActivity implements View.OnClickListener
                     stopGyroa = false;
                 }
 
-                if (rx > 1.0f && !stopGyroa && (exerciseType == 0)) {
+                if (rx > 0.7f && !stopGyroa && (exerciseType == 0)) {
                     exerciseLeft--;
                     stopGyroa = true;
                 }
-                if (rx < -1.0f && (exerciseType == 0)) {
+                if (rx < -0.7f && (exerciseType == 0)) {
                     stopGyroa = false;
                 }
             }
@@ -171,19 +239,17 @@ public class SeriesActivity extends MainActivity implements View.OnClickListener
         startStopButtonS.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (startStop) {
+                if (startStop || onPause) {
                     startStop = false;
-                    restExercise = false;
-                    doSeries();
+                    onPause = false;
                     startStopButtonS.setText("Stop");
-                } else {
-                    startStop = true;
+                }else if(!onPause){
+                    onPause = true;
                     startStopButtonS.setText("Start");
                 }
             }
         });
-        new Thread(new Runnable() {
-        })
+
     }
 
     public void onClick(View v) {
@@ -194,54 +260,5 @@ public class SeriesActivity extends MainActivity implements View.OnClickListener
     protected void onResume() {
         super.onResume();
         gyroscope.register();
-    }
-
-    private void startTimer() {
-        countDownTimer = new CountDownTimer(startInMiliis, 5) {
-            @Override
-            public void onTick(long millisUntilFinished) {
-                timeLeft = millisUntilFinished;
-                String text = String.format(Locale.getDefault(), "%01d s", timeLeft / 1000);
-                timeRepeatsText.setText(text);
-
-            }
-
-            @Override
-            public void onFinish() {
-                restExercise = false;
-                seriesLeft--;
-            }
-        }.start();
-
-    }
-
-    private void pauseTimer() {
-        countDownTimer.cancel();
-        startStop = false;
-        startStopButtonS.setText("Start");
-    }
-
-
-    public void doSeries(View v) {
-        exerciseType = 0;
-        if (!startStop) {
-            if (!restExercise) {
-                timeRepeatsText.setText(String.format(Locale.getDefault(), "3", exerciseLeft));
-                if (exerciseType == 0) {
-                    infoText.setText("Now Squats!");
-                } else {
-                    infoText.setText("Now PushUps!");
-                }
-                if (exerciseLeft == 0) {
-                    restExercise = true;
-                    exerciseLeft = exerciseAmount;
-                    timeLeft = startInMiliis;
-                }
-            }
-            if (restExercise) {
-                infoText.setText("Now Rest!");
-                startTimer();
-            }
-        }
     }
 }

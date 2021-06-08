@@ -8,6 +8,7 @@
     <string name="series">Series</string>
     <string name="timer">Timer</string>
     <string name="back">Back</string>
-    <string name="startstop">Start/Stop</string>
+    <string name="startstop">Start</string>
+    <string name="reset">Reset</string>
 
 </resources>

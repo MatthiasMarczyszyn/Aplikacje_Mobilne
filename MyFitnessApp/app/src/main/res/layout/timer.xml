@@ -97,6 +97,12 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
+            <TextView
+                android:id="@+id/textView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TextView" />
+
             <Button
                 android:id="@+id/startStopButtonT"
                 style="@style/Widget.AppCompat.Button.Borderless"
@@ -109,6 +115,12 @@
                 android:textColor="#632B30"
                 android:textSize="23sp"
                 app:backgroundTint="#E6AF2E" />
+
+            <Button
+                android:id="@+id/button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Button" />
         </TableRow>
 
         <TableRow
